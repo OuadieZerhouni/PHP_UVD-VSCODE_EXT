@@ -27,7 +27,7 @@ class PHPVariableAnalyzer {
 findGlobalVariables(document) {
     const globalVariables = [];
     const variableUsageMap = {};
-    const variableDeclarationRegex = /^\s*\$(\w+)\s*(?:=[^;]+)?\s*;/;
+    const variableDeclarationRegex = /\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)\s*(?=[=;])/;
     let isInsideComment = false; // Flag to track if currently inside a comment block
 
     for (let lineIndex = 0; lineIndex < document.lineCount; lineIndex++) {
