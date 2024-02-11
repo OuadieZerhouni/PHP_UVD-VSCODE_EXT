@@ -32,8 +32,7 @@ findGlobalVariables(document) {
     const globalVariables = [];
     const variableUsageMap = {};
     // Enhanced regex to account for optional whitespace and newlines
-    const variableDeclarationRegex = /(?<!->)\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)(?:\s*=\s*[^=;]*|)(?:\s+as\s+\$?[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)/;
-    // Adjusted regex to match variable declarations in foreach loops across lines
+    const variableDeclarationRegex = /(?<!->)\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)\s*(?=[=;])/;    // Adjusted regex to match variable declarations in foreach loops across lines
     const catchAndForeachRegex = /(?:catch|foreach|while)?\s*\(\s*.*?\s+as\s+(?:\s*\r?\n?)*\$(\w+)\)|^\s*as\s+\$(\w+)/gm;
     const variableUsageRegex = /(?<!as\s+)\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)/g;
     const superGlobals = [
@@ -132,9 +131,6 @@ findGlobalVariables(document) {
 
     return { globalVariables, variableUsageMap };
 }
-
-
-
 
     highlightUnusedVariables(globalVariables, variableUsageMap, document) {
         const diagnostics = [];
