@@ -31,8 +31,10 @@ class PHPVariableAnalyzer {
 findGlobalVariables(document) {
     const globalVariables = [];
     const variableUsageMap = {};
-    const variableDeclarationRegex = /(?<!->)\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)\s*(?=[=;])/;
-    const catchAndForeachRegex = /catch\s*\(\s*\S+\s+\$(\w+)\s*\)|foreach\s*\(\s*.*?as\s+\$(\w+)\)/g;
+    // Enhanced regex to account for optional whitespace and newlines
+    const variableDeclarationRegex = /(?<!->)\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)(?:\s*=\s*[^=;]*|)(?:\s+as\s+\$?[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)/;
+    // Adjusted regex to match variable declarations in foreach loops across lines
+    const catchAndForeachRegex = /(?:catch|foreach|while)?\s*\(\s*.*?\s+as\s+(?:\s*\r?\n?)*\$(\w+)\)|^\s*as\s+\$(\w+)/gm;
     const variableUsageRegex = /(?<!as\s+)\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)/g;
     const superGlobals = [
         '$GLOBALS', '$_SERVER', '$_REQUEST', '$_POST', '$_GET', '$_FILES',
@@ -42,7 +44,7 @@ findGlobalVariables(document) {
     let isInsideComment = false;
     let isInsideClassOrFunction = false;
     let braceCounter = 0;
-    this.skipRegions =[];
+    this.skipRegions = [];
     for (let lineIndex = 0; lineIndex < document.lineCount; lineIndex++) {
         const line = document.lineAt(lineIndex);
         const lineText = line.text;
@@ -64,20 +66,18 @@ findGlobalVariables(document) {
         // Check if inside a class or function
         if (lineText.match(/\bclass\b/) || lineText.match(/\bfunction\b/)) {
             isInsideClassOrFunction = true;
-            this.skipRegions.push(lineIndex );
+            this.skipRegions.push(lineIndex);
         }
 
-        // Check for opening brace
+        // Check for opening and closing braces to manage class or function scope
         if (lineText.includes('{') && isInsideClassOrFunction) {
             braceCounter++;
         }
-
-        // Check for closing brace
         if (lineText.includes('}') && isInsideClassOrFunction) {
             braceCounter--;
             if (braceCounter === 0) {
                 isInsideClassOrFunction = false;
-                this.skipRegions.push(lineIndex );
+                this.skipRegions.push(lineIndex);
             }
         }
 
@@ -86,7 +86,7 @@ findGlobalVariables(document) {
             continue;
         }
 
-        // New logic for catch and foreach
+        // Enhanced logic for catch and foreach to handle variable whitespace/newlines
         let match1;
         while ((match1 = catchAndForeachRegex.exec(lineText)) !== null) {
             const variableName = match1[1] || match1[2];
@@ -101,6 +101,7 @@ findGlobalVariables(document) {
             }
         }
 
+        // Matching other variable declarations
         const match = lineText.match(variableDeclarationRegex);
         if (match) {
             const variableName = match[1];
@@ -115,29 +116,24 @@ findGlobalVariables(document) {
             }
         }
 
+        // Tracking variable usages
         if (lineText.match(variableUsageRegex)) {
-            const matches = lineText.match(variableUsageRegex);
-            matches.forEach(match => {
-                if (!globalVariables.includes(match) && !superGlobals.includes(match) && !variableUsageMap[match]) {
-                    globalVariables.push(match);
-                    if (!variableUsageMap[match]) {
-                        variableUsageMap[match] = { declarations: [], usages: [] };
-                    }
+            const matches = lineText.matchAll(variableUsageRegex);
+            for (const match of matches) {
+                const fullVariable = match[0];
+                if (!globalVariables.includes(fullVariable) && !superGlobals.includes(fullVariable) && !variableUsageMap[fullVariable]) {
+                    globalVariables.push(fullVariable);
+                    variableUsageMap[fullVariable] = { declarations: [], usages: [] };
                 }
-                variableUsageMap[match]?.usages.push(lineIndex);
-            });
-        }
-
-        globalVariables.forEach(variable => {
-            if (lineText.includes(variable) && (!match || ('$' + match[1]) !== variable)) {
-                variableUsageMap[variable].usages.push(lineIndex);
+                variableUsageMap[fullVariable].usages.push(lineIndex);
             }
-        });
+        }
     }
-
 
     return { globalVariables, variableUsageMap };
 }
+
+
 
 
     highlightUnusedVariables(globalVariables, variableUsageMap, document) {
