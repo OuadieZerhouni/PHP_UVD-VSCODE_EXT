@@ -3,7 +3,7 @@
   "displayName": "PHP UVD",
   "publisher": "OuadieZerhouni",
   "description": "php unused variables detector",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "engines": {
     "vscode": "^1.86.0"
   },

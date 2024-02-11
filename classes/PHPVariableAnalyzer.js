@@ -18,9 +18,9 @@ class PHPVariableAnalyzer {
             return;
         }
         const { globalVariables, variableUsageMap } = this.findGlobalVariables(document);
-        const array1 = this.highlightUnusedVariables(globalVariables, variableUsageMap, document);
-        const array2 = this.highlightUndeclaredVariables(globalVariables, variableUsageMap, document);
-        const diagnostics = array1.concat(array2);
+        const diagnostics = this.highlightUnusedVariables(globalVariables, variableUsageMap, document);
+        // const array2 = this.highlightUndeclaredVariables(globalVariables, variableUsageMap, document);
+        // const diagnostics = array1.concat(array2);
         this.diagnostics.set(document.uri, diagnostics);
     }
 
@@ -32,7 +32,7 @@ findGlobalVariables(document) {
     const globalVariables = [];
     const variableUsageMap = {};
     // Enhanced regex to account for optional whitespace and newlines
-    const variableDeclarationRegex = /(?<!->)\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)\s*(?=[=;])/;    // Adjusted regex to match variable declarations in foreach loops across lines
+    const variableDeclarationRegex = /(?:(?<=\bas\b)\s*\$\w+|(?<!->)\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)\s*(?=[=;]))/;
     const catchAndForeachRegex = /(?:catch|foreach|while)?\s*\(\s*.*?\s+as\s+(?:\s*\r?\n?)*\$(\w+)\)|^\s*as\s+\$(\w+)/gm;
     const variableUsageRegex = /(?<!as\s+)\$([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)/g;
     const superGlobals = [
@@ -143,11 +143,26 @@ findGlobalVariables(document) {
                 declarations.forEach(declaredLine => {
                     const line = document.lineAt(declaredLine);
                     const variableIndex = line.text.indexOf(variable);
+                    if (variableIndex === -1) {
+                        return;
+                    }
                     const range = new vscode.Range(declaredLine, variableIndex, declaredLine, variableIndex + variable.length);
                     const diagnostic = new vscode.Diagnostic(range, `Variable '${variable}' is declared but not used.`, vscode.DiagnosticSeverity.Warning);
                     diagnostics.push(diagnostic);
                 });
+
+                
             }
+            else if (declarations.length === 0) {
+            // Highlight all usages as unused
+            usages.forEach(usageLine => {
+                const line = document.lineAt(usageLine);
+                const variableIndex = line.text.indexOf(variable);
+                const range = new vscode.Range(usageLine, variableIndex, usageLine, variableIndex + variable.length);
+                const diagnostic = new vscode.Diagnostic(range, `Variable '${variable}' is used but not declared.`, vscode.DiagnosticSeverity.Warning);
+                diagnostics.push(diagnostic);
+            });
+        }
         });
 
 
@@ -162,53 +177,53 @@ findGlobalVariables(document) {
     }
 
 
-    highlightUndeclaredVariables(globalVariables, variableUsageMap, document) {
-        const diagnostics = [];
+    // highlightUndeclaredVariables(globalVariables, variableUsageMap, document) {
+    //     const diagnostics = [];
  
 
-        for (let lineIndex = 0; lineIndex < document.lineCount; lineIndex++) {
-            // if the first bigger than  lineIndex element in skipRegions  has a odd indexin the array then skip the line
-            const line = document.lineAt(lineIndex);
-            const lineText = line.text;
-            let isInsideComment = false; // Flag to track if currently inside a comment block
-            // Check for comment start and end
-            if (lineText.includes('/*')) {
-                isInsideComment = true;
-            }
-            if (lineText.includes('*/')) {
-                isInsideComment = false;
-                continue; // Skip the line with comment end
-            }
+    //     for (let lineIndex = 0; lineIndex < document.lineCount; lineIndex++) {
+    //         // if the first bigger than  lineIndex element in skipRegions  has a odd indexin the array then skip the line
+    //         const line = document.lineAt(lineIndex);
+    //         const lineText = line.text;
+    //         let isInsideComment = false; // Flag to track if currently inside a comment block
+    //         // Check for comment start and end
+    //         if (lineText.includes('/*')) {
+    //             isInsideComment = true;
+    //         }
+    //         if (lineText.includes('*/')) {
+    //             isInsideComment = false;
+    //             continue; // Skip the line with comment end
+    //         }
             
-            // Skip line if inside comment or starts with //
-            if (isInsideComment || lineText.trim().startsWith('//')) {
-                continue;
-            }
-            let firstBigger = this.skipRegions.find((element) => element > lineIndex);
-            if (firstBigger && this.skipRegions.indexOf(firstBigger) % 2 == 1) {
-                // make the lineIndex to be the first bigger element after the current lineIndex
-                lineIndex = firstBigger;
-                continue;
-            }
-            globalVariables.forEach(variable => {
-                if (lineText.includes(variable) && !variableUsageMap[variable].declarations.length) {
-                    const variableIndex = lineText.indexOf(variable);
-                    const range = new vscode.Range(lineIndex, variableIndex, lineIndex, variableIndex + variable.length);
-                    const diagnostic = new vscode.Diagnostic(range, `Variable '${variable}' is used before it's declared.`, vscode.DiagnosticSeverity.Warning);
-                    diagnostics.push(diagnostic);
-                }
-            });
-        }
+    //         // Skip line if inside comment or starts with //
+    //         if (isInsideComment || lineText.trim().startsWith('//')) {
+    //             continue;
+    //         }
+    //         let firstBigger = this.skipRegions.find((element) => element > lineIndex);
+    //         if (firstBigger && this.skipRegions.indexOf(firstBigger) % 2 == 1) {
+    //             // make the lineIndex to be the first bigger element after the current lineIndex
+    //             lineIndex = firstBigger;
+    //             continue;
+    //         }
+    //         globalVariables.forEach(variable => {
+    //             if (lineText.includes(variable) && !variableUsageMap[variable].declarations.length) {
+    //                 const variableIndex = lineText.indexOf(variable);
+    //                 const range = new vscode.Range(lineIndex, variableIndex, lineIndex, variableIndex + variable.length);
+    //                 const diagnostic = new vscode.Diagnostic(range, `Variable '${variable}' is used before it's declared.`, vscode.DiagnosticSeverity.Warning);
+    //                 diagnostics.push(diagnostic);
+    //             }
+    //         });
+    //     }
 
-        if (diagnostics.length > 0) {
-            this.showInformationMessage('Analysis complete. Undeclared variables highlighted.');
-            return diagnostics;
-        }
-        else {
-            this.showInformationMessage('No undeclared variables found.');
-            return [];
-        }
-    }
+    //     if (diagnostics.length > 0) {
+    //         this.showInformationMessage('Analysis complete. Undeclared variables highlighted.');
+    //         return diagnostics;
+    //     }
+    //     else {
+    //         this.showInformationMessage('No undeclared variables found.');
+    //         return [];
+    //     }
+    // }
 
 
 
