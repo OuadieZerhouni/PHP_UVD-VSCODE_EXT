@@ -1,6 +1,7 @@
 {
   "name": "php-uvd",
   "displayName": "PHP UVD",
+  "publisher": "OuadieZerhouni",
   "description": "php unused variables detector",
   "version": "0.0.1",
   "engines": {
