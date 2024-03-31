@@ -3,7 +3,7 @@
   "displayName": "PHP UVD",
   "publisher": "OuadieZerhouni",
   "description": "php unused variables detector",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "engines": {
     "vscode": "^1.86.0"
   },
@@ -11,7 +11,6 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:php-uvd.analyzeFile",
     "onLanguage:php"
   ],
   "main": "./extension.js",
